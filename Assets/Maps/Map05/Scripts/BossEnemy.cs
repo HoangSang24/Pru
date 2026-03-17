@@ -1,10 +1,15 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class BossEnemy : MonoBehaviour
 {
     public enum EnemyState { Patrol, Chase, Attack, Dead }
     private EnemyState currentState;
+
     private AudioManaGer audioMana;
+
+    [Header("UI")]
+    [SerializeField] private Image healthFill; // 🔥 giống Enemy
 
     [Header("References")]
     public Transform player;
@@ -32,16 +37,22 @@ public class BossEnemy : MonoBehaviour
     private GameObject currentBullet;
     private Vector2 startPos;
 
+    /* ================= INIT ================= */
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-
         audioMana = FindAnyObjectByType<AudioManaGer>();
+
         currentHealth = maxHealth;
         startPos = transform.position;
         currentState = EnemyState.Patrol;
+
+        UpdateHealthBar(); // 🔥 hiển thị ngay từ đầu
     }
+
+    /* ================= UPDATE ================= */
 
     void Update()
     {
@@ -60,7 +71,16 @@ public class BossEnemy : MonoBehaviour
         }
 
         HandleState();
+
+        // 🔥 (optional) làm mượt thanh máu
+        if (healthFill != null)
+        {
+            float target = (float)currentHealth / maxHealth;
+            healthFill.fillAmount = Mathf.Lerp(healthFill.fillAmount, target, Time.deltaTime * 5f);
+        }
     }
+
+    /* ================= STATE ================= */
 
     void HandleState()
     {
@@ -95,6 +115,8 @@ public class BossEnemy : MonoBehaviour
         Move(moveSpeed);
     }
 
+    /* ================= ATTACK ================= */
+
     void Attack()
     {
         StopMoving();
@@ -116,7 +138,8 @@ public class BossEnemy : MonoBehaviour
         isAttacking = false;
     }
 
-    // Animation Event gọi hàm này
+    /* ================= SHOOT ================= */
+
     public void Shoot()
     {
         if (waterPrefab == null || firePoint == null) return;
@@ -138,18 +161,32 @@ public class BossEnemy : MonoBehaviour
         currentBullet = null;
     }
 
+    /* ================= DAMAGE ================= */
+
     public void TakeDamage(int dmg)
     {
         if (currentState == EnemyState.Dead) return;
 
         currentHealth -= dmg;
+        currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
 
         anim.SetTrigger("isHurt");
         audioMana.playEnemyHurt();
 
+        UpdateHealthBar(); // 🔥 update giống Enemy
+
         if (currentHealth <= 0)
             Die();
     }
+
+    void UpdateHealthBar()
+    {
+        if (healthFill == null) return;
+
+        healthFill.fillAmount = (float)currentHealth / maxHealth;
+    }
+
+    /* ================= DIE ================= */
 
     void Die()
     {
@@ -163,6 +200,8 @@ public class BossEnemy : MonoBehaviour
 
         Destroy(gameObject, 2f);
     }
+
+    /* ================= MOVEMENT ================= */
 
     void Move(float speed)
     {
@@ -178,7 +217,6 @@ public class BossEnemy : MonoBehaviour
     void Flip()
     {
         isFacingRight = !isFacingRight;
-        transform.localScale =
-            new Vector3(isFacingRight ? 1 : -1, 1, 1);
+        transform.localScale = new Vector3(isFacingRight ? 1 : -1, 1, 1);
     }
 }
